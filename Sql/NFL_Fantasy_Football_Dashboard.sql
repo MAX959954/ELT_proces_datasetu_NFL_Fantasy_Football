@@ -14,7 +14,7 @@ FROM DIM_PBP_PASSING p
 LEFT JOIN DIM_ROSTER r ON p.gsis_id = r.gsis_id
 WHERE p.gsis_id IS NOT NULL
 GROUP BY p.gsis_id, r.full_name, r.team
-HAVING COUNT(*) >= 50  -- Minimum attempts
+HAVING COUNT(*) >= 50  
 ORDER BY total_passing_yards DESC
 LIMIT 10;
 
@@ -76,6 +76,7 @@ JOIN DIM_TEAMS away ON s.away_team = away.team_abbr
 GROUP BY s.week, s.gameday, home.team_name, away.team_name, s.home_score, s.away_score
 ORDER BY total_plays DESC
 LIMIT 10;
+
 
 
 
