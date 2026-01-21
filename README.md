@@ -214,28 +214,48 @@ USE DATABASE VIPER_DB;
 CREATE OR REPLACE SCHEMA STAGING;
 
 -- Staging: PBP
+```
 CREATE OR REPLACE TABLE STG_PBP AS
 SELECT * FROM NFL_FANTASY_FOOTBALL.NFL2022.PBP;
+```
 
 -- Staging: PBP_PASSING
+```
 CREATE OR REPLACE TABLE STG_PBP_PASSING AS
 SELECT * FROM NFL_FANTASY_FOOTBALL.NFL2022.PBP_PASSING;
+```
 
 -- Staging: PBP_RECEIVING
+```
 CREATE OR REPLACE TABLE STG_PBP_RECEIVING AS
 SELECT * FROM NFL_FANTASY_FOOTBALL.NFL2022.PBP_RECEIVING;
+```
 
 -- Staging: ROSTER
+```
 CREATE OR REPLACE TABLE STG_ROSTER AS
 SELECT * FROM NFL_FANTASY_FOOTBALL.NFL2022.ROSTER;
+```
 
 -- Staging: SCHEDULE
+```
 CREATE OR REPLACE TABLE STG_SCHEDULE AS
 SELECT * FROM NFL_FANTASY_FOOTBALL.NFL2022.SCHEDULE;
+```
 
 -- Staging: TEAMS
+```
 CREATE OR REPLACE TABLE STG_TEAMS AS
 SELECT * FROM NFL_FANTASY_FOOTBALL.NFL2022.TEAMS;
+```
+
+
+--Staging: PBP_PUSHING
+```
+CREATE OR REPLACE TABLE STG_PBP_PUSHING AS
+SELECT *
+FROM NFL_FANTASY_FOOTBALL.NFL2022.PBP_RUSHING;
+```
 
 Účel: Staging tabuľky slúžia ako dočasné úložisko surových dát pred ich transformáciou a načítaním do dimenzionálneho modelu.
 
@@ -255,6 +275,7 @@ Hlavné transformácie zahŕňali:
 
 DIM_TEAMS - Katalóg tímov:
 
+```
 INSERT INTO DIM_TEAMS
 SELECT 
     team_abbr,
@@ -268,9 +289,11 @@ SELECT
     team_color3,
     team_color4
 FROM STAGING.STG_TEAMS;
+```
 
 DIM_ROSTER - Katalóg hráčov:
 
+```
 INSERT INTO DIM_ROSTER
 SELECT 
     gsis_id,
@@ -297,9 +320,11 @@ SELECT
     status,
     headshot_url
 FROM STAGING.STG_ROSTER;
+```
 
 DIM_SCHEDULE - Rozvrh zápasov:
 
+```
 INSERT INTO DIM_SCHEDULE
 SELECT 
     game_id,
@@ -348,9 +373,10 @@ SELECT
     pff,
     espn
 FROM STAGING.STG_SCHEDULE;
+```
 
 DIM_PBP_PASSING, DIM_PBP_RECEIVING, DIM_PBP_PUSHING:
-
+```
 INSERT INTO DIM_PBP_PASSING
 SELECT DISTINCT
     PBP_ID,
@@ -386,9 +412,11 @@ SELECT DISTINCT
     COALESCE(FUMBLE_LOST, 0)
 FROM VIPER_DB.STAGING.STG_PBP
 WHERE RUSHER_PLAYER_ID IS NOT NULL;
+```
 
 #### Vytvorenie faktovej tabuľky s Window Functions
 
+```
 INSERT INTO FACT_PBP
 SELECT 
     pbp_id,
@@ -410,6 +438,7 @@ SELECT
     ROW_NUMBER() OVER (PARTITION BY game_id ORDER BY play_id) as play_sequence,
     LAG(score_differential) OVER (PARTITION BY game_id ORDER BY play_id) as previous_score
 FROM STG_PBP;
+```
 
 Vysvetlenie Window Functions:
 
@@ -439,6 +468,7 @@ Dashboard obsahuje 5 vizualizácií poskytujúcich komplexný prehľad o výkonn
 
 SQL dotaz:
 
+```
 SELECT 
     p.gsis_id,
     r.full_name,
@@ -457,6 +487,7 @@ GROUP BY p.gsis_id, r.full_name, r.team
 HAVING COUNT(*) >= 50  -- Minimum attempts
 ORDER BY total_passing_yards DESC
 LIMIT 10;
+```
 
 Interpretácia: Tento SQL dotaz identifikuje 10 najlepších quarterbackov podľa celkových pasovacích yardov, pričom zároveň analyzuje ich efektivitu prostredníctvom kľúčových metrík.
 
@@ -465,6 +496,7 @@ Interpretácia: Tento SQL dotaz identifikuje 10 najlepších quarterbackov podľ
 
 SQL dotaz:
 
+```
 SELECT 
     rec.gsis_id,
     r.full_name,
@@ -481,6 +513,7 @@ WHERE rec.gsis_id IS NOT NULL
 GROUP BY rec.gsis_id, r.full_name, r.team, r.position
 ORDER BY receptions DESC
 LIMIT 10;
+```
 
 Interpretácia:  Tento SQL dotaz identifikuje 10 najlepších prijímačov podľa celkového počtu chytených prihrávok (receptions), pričom zároveň analyzuje ich produktivitu a efektivitu v prijímacej hre.
 
@@ -489,6 +522,7 @@ Interpretácia:  Tento SQL dotaz identifikuje 10 najlepších prijímačov podľ
 
 SQL dotaz:
 
+```
 SELECT 
     s.week,
     s.gameday,
@@ -504,6 +538,7 @@ JOIN DIM_TEAMS away ON s.away_team = away.team_abbr
 GROUP BY s.week, s.gameday, home.team_name, away.team_name, s.home_score, s.away_score
 ORDER BY total_plays DESC
 LIMIT 10;
+```
 
 Interpretácia:Tento SQL dotaz identifikuje 10 zápasov s najvyšším celkovým počtom odohraných akcií (plays) v sezóne. Analýza poskytuje pohľad na tempo hry, dĺžku zápasov a intenzitu súbojov medzi tímami.
 
@@ -511,7 +546,7 @@ Interpretácia:Tento SQL dotaz identifikuje 10 zápasov s najvyšším celkovým
 ### Vizualizácia 4: Players by position and experience
 
 SQL dotaz: 
-
+```
 SELECT 
     position,
     team,
@@ -524,6 +559,7 @@ FROM DIM_ROSTER
 WHERE position IN ('QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'DB')
 GROUP BY position, team
 ORDER BY position, player_count DESC;
+```
 
 Interpretácia: Tento SQL dotaz identifikuje 10 najlepších prijímačov podľa celkových receiving yardov, čo je jeden z najdôležitejších ukazovateľov ofenzívnej produktivity v NFL. Analýza kombinuje objemové štatistiky s informáciami o tíme každého hráča.
 
@@ -532,6 +568,8 @@ Interpretácia: Tento SQL dotaz identifikuje 10 najlepších prijímačov podľa
 
 SQL dotaz:
 
+```
+sql
 SELECT 
     r.full_name as receiver,
     t.team_name as team,
@@ -544,6 +582,7 @@ JOIN DIM_TEAMS t ON r.team = t.team_abbr
 GROUP BY r.full_name, t.team_name
 ORDER BY total_yards DESC
 LIMIT 10;
+```
 
 Interpretácia:Tento SQL dotaz analyzuje skladbu hráčskych káderov NFL tímov podľa pozícií, skúseností a fyzických charakteristík. Poskytuje komplexný pohľad na roster construction a team building stratégie jednotlivých organizácií.
 
